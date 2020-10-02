@@ -9,7 +9,7 @@
       label-position="left"
     >
       <div class="title-container">
-        <h3 class="title">Login Form</h3>
+        <h3 class="title">欢迎登录</h3>
       </div>
 
       <el-form-item prop="username">
@@ -19,7 +19,7 @@
         <el-input
           ref="username"
           v-model="loginForm.username"
-          placeholder="Username"
+          placeholder="请输入用户名"
           name="username"
           type="text"
           tabindex="1"
@@ -36,7 +36,7 @@
           ref="password"
           v-model="loginForm.password"
           :type="passwordType"
-          placeholder="Password"
+          placeholder="请输入密码"
           name="password"
           tabindex="2"
           auto-complete="on"
@@ -52,11 +52,10 @@
         type="primary"
         style="width:100%;margin-bottom:30px;"
         @click.native.prevent="handleLogin"
-      >Login</el-button>
+      >登录</el-button>
 
       <div class="tips">
-        <span style="margin-right:20px;">username: admin</span>
-        <span>password: any</span>
+        <el-checkbox v-model="checked">同意用户协议及隐私政策</el-checkbox>
       </div>
     </el-form>
   </div>
@@ -64,28 +63,30 @@
 
 <script>
 import { validUsername } from '@/utils/validate'
+import { login } from '@/api/account'
+
 
 export default {
   name: 'Login',
   data() {
     const validateUsername = (rule, value, callback) => {
       if (!validUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
+        callback(new Error('您输入的用户名格式不正确！'))
       } else {
         callback()
       }
     }
     const validatePassword = (rule, value, callback) => {
       if (value.length < 6) {
-        callback(new Error('The password can not be less than 6 digits'))
+        callback(new Error('您输入的密码格式不正确！'))
       } else {
         callback()
       }
     }
     return {
       loginForm: {
-        username: 'admin',
-        password: '111111'
+        username: '',
+        password: ''
       },
       loginRules: {
         username: [{ required: true, trigger: 'blur', validator: validateUsername }],
@@ -93,7 +94,8 @@ export default {
       },
       loading: false,
       passwordType: 'password',
-      redirect: undefined
+      redirect: undefined,
+      checked: false
     }
   },
   watch: {
@@ -116,15 +118,49 @@ export default {
       })
     },
     handleLogin() {
+      const _self = this;
       this.$refs.loginForm.validate(valid => {
+        if (!this.checked) {
+          this.$message.error('请先同意用户协议及隐私政策');
+          return;
+        }
         if (valid) {
-          this.loading = true
-          this.$store.dispatch('user/login', this.loginForm).then(() => {
-            this.$router.push({ path: this.redirect || '/' })
-            this.loading = false
-          }).catch(() => {
-            this.loading = false
-          })
+          _self.loading = true
+          const params = {
+            "userName": _self.loginForm.username,
+            "password": _self.loginForm.password
+          };
+
+          login(params).then(response => {
+            _self.loading = false;
+            const data = response.data;
+            console.log("login", data)
+            if (data.code == 200) {
+              this.$message({
+                message: '登录成功～',
+                type: 'success'
+              });
+
+
+            } else {
+              _self.$message.error(data.msg);
+            }
+          }).catch(error => {
+            _self.loading = false;
+            console.log("login error", error)
+            _self.$message.error("登录失败！");
+          });
+
+          // this.$store.dispatch('user/login', this.loginForm).then(() => {
+          //   this.$router.push({ path: this.redirect || '/' })
+          //   this.loading = false
+          // }).catch(() => {
+          //   this.loading = false
+          // })
+
+
+
+
         } else {
           console.log('error submit!!')
           return false
